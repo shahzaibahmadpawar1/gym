@@ -24,28 +24,9 @@
       </div>
 
       <h2 style="font-size:1.35rem;margin-bottom:6px">Welcome back</h2>
-      <p class="muted-sm">Choose a role to explore the demo. No password needed for this frontend prototype.</p>
+      <p class="muted-sm" id="login-subtitle">Choose a role to explore the demo. No password needed for this frontend prototype.</p>
 
-      <div class="role-cards" id="role-cards">
-        <button type="button" class="role-card selected" data-role="admin">
-          <div class="role-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          </div>
-          <div>
-            <strong>Admin</strong>
-            <span>Owner — full access to fees, packages, commissions &amp; audit</span>
-          </div>
-        </button>
-        <button type="button" class="role-card" data-role="staff">
-          <div class="role-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </div>
-          <div>
-            <strong>Staff</strong>
-            <span>Front desk — members, fee collection &amp; attendance</span>
-          </div>
-        </button>
-      </div>
+      <div class="role-cards" id="role-cards"></div>
 
       <button class="btn btn-primary" id="enter-btn">Enter dashboard</button>
     </div>
@@ -54,7 +35,40 @@
   <script src="js/data.js"></script>
   <script src="js/store.js"></script>
   <script>
+    const segregated = Store.isSegregated();
     let selected = "admin";
+
+    const cards = segregated
+      ? [
+          { key: "admin", title: "Admin", desc: "Owner — full access to all members, fees, packages & audit" },
+          { key: "male", title: "Male staff", desc: "Male desk — only male members, leads, fees & attendance" },
+          { key: "female", title: "Female staff", desc: "Female desk — only female members, leads, fees & attendance" },
+        ]
+      : [
+          { key: "admin", title: "Admin", desc: "Owner — full access to fees, packages, commissions & audit" },
+          { key: "staff", title: "Staff", desc: "Front desk — all members, fee collection & attendance" },
+        ];
+
+    document.getElementById("login-subtitle").textContent = segregated
+      ? "Segregated mode: Admin, Male staff, or Female staff. No password needed for this demo."
+      : "Unified mode: Admin or Staff. No password needed for this demo.";
+
+    const iconAdmin = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+    const iconStaff = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+
+    document.getElementById("role-cards").innerHTML = cards
+      .map(
+        (c, i) => `
+      <button type="button" class="role-card ${i === 0 ? "selected" : ""}" data-role="${c.key}">
+        <div class="role-icon">${c.key === "admin" ? iconAdmin : iconStaff}</div>
+        <div>
+          <strong>${c.title}</strong>
+          <span>${c.desc}</span>
+        </div>
+      </button>`
+      )
+      .join("");
+
     document.querySelectorAll(".role-card").forEach((card) => {
       card.addEventListener("click", () => {
         document.querySelectorAll(".role-card").forEach((c) => c.classList.remove("selected"));
@@ -62,10 +76,16 @@
         selected = card.dataset.role;
       });
     });
+
     document.getElementById("enter-btn").addEventListener("click", () => {
-      Store.switchRole(selected);
-      location.href = "app.html#/dashboard";
+      try {
+        Store.loginAsDesk(selected, { login: true });
+        location.href = "app.html#/dashboard";
+      } catch (e) {
+        alert(e.message || String(e));
+      }
     });
+
     if (Store.getSession()) {
       location.href = "app.html#/dashboard";
     }

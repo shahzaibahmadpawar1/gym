@@ -20,6 +20,19 @@
     plus: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
   };
 
+  let lastFocus = null;
+  let trapHandler = null;
+  let escHandler = null;
+
+  function esc(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   function toast(message, type = "default") {
     const root = document.getElementById("toast-root");
     if (!root) return;
@@ -35,21 +48,66 @@
     }, 2800);
   }
 
+  function getFocusable(container) {
+    return [
+      ...container.querySelectorAll(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+      ),
+    ].filter((el) => el.offsetParent !== null || el === document.activeElement);
+  }
+
   function openModal(html) {
     closeModal();
+    lastFocus = document.activeElement;
     const overlay = document.createElement("div");
     overlay.className = "overlay open";
     overlay.id = "app-modal";
-    overlay.innerHTML = `<div class="modal">${html}</div>`;
+    overlay.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) closeModal();
     });
     document.body.appendChild(overlay);
+    document.body.style.overflow = "hidden";
+
+    const dialog = overlay.querySelector(".modal");
+    const focusables = getFocusable(dialog);
+    (focusables[0] || dialog).focus?.();
+
+    trapHandler = (e) => {
+      if (e.key !== "Tab") return;
+      const list = getFocusable(dialog);
+      if (!list.length) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    escHandler = (e) => {
+      if (e.key === "Escape") closeModal();
+    };
+    document.addEventListener("keydown", trapHandler);
+    document.addEventListener("keydown", escHandler);
     return overlay;
   }
 
   function closeModal() {
     document.getElementById("app-modal")?.remove();
+    document.body.style.overflow = "";
+    if (trapHandler) document.removeEventListener("keydown", trapHandler);
+    if (escHandler) document.removeEventListener("keydown", escHandler);
+    trapHandler = null;
+    escHandler = null;
+    if (lastFocus && lastFocus.focus) {
+      try {
+        lastFocus.focus();
+      } catch (_) {}
+    }
+    lastFocus = null;
   }
 
   function confirmDialog({ title, message, confirmLabel = "Confirm", danger = false }) {
@@ -57,17 +115,18 @@
       openModal(`
         <div class="modal-header">
           <div>
-            <h2>${title}</h2>
-            <p class="muted-sm" style="margin-top:6px">${message}</p>
+            <h2 id="confirm-title">${esc(title)}</h2>
+            <p class="muted-sm" style="margin-top:6px">${esc(message)}</p>
           </div>
-          <button class="btn-icon" data-cancel>${icons.close}</button>
+          <button class="btn-icon" data-cancel aria-label="Close">${icons.close}</button>
         </div>
         <div class="modal-footer">
           <button class="btn btn-ghost" data-cancel>Cancel</button>
-          <button class="btn ${danger ? "btn-danger" : "btn-primary"}" data-ok>${confirmLabel}</button>
+          <button class="btn ${danger ? "btn-danger" : "btn-primary"}" data-ok>${esc(confirmLabel)}</button>
         </div>
       `);
       const root = document.getElementById("app-modal");
+      root.querySelector(".modal")?.setAttribute("aria-labelledby", "confirm-title");
       root.querySelectorAll("[data-cancel]").forEach((b) =>
         b.addEventListener("click", () => {
           closeModal();
@@ -81,21 +140,69 @@
     });
   }
 
+  function promptDialog({ title, message, label = "Reason", confirmLabel = "Confirm", required = true }) {
+    return new Promise((resolve) => {
+      const id = "prompt-field-" + Date.now();
+      openModal(`
+        <div class="modal-header">
+          <div>
+            <h2 id="prompt-title">${esc(title)}</h2>
+            <p class="muted-sm" style="margin-top:6px">${esc(message || "")}</p>
+          </div>
+          <button class="btn-icon" data-cancel aria-label="Close">${icons.close}</button>
+        </div>
+        <div class="form-grid" style="padding:0 4px">
+          <div class="field full">
+            <label for="${id}">${esc(label)}</label>
+            <input id="${id}" ${required ? "required" : ""} />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" data-cancel>Cancel</button>
+          <button class="btn btn-primary" data-ok>${esc(confirmLabel)}</button>
+        </div>
+      `);
+      const root = document.getElementById("app-modal");
+      root.querySelector(".modal")?.setAttribute("aria-labelledby", "prompt-title");
+      const input = document.getElementById(id);
+      root.querySelectorAll("[data-cancel]").forEach((b) =>
+        b.addEventListener("click", () => {
+          closeModal();
+          resolve(null);
+        })
+      );
+      root.querySelector("[data-ok]").addEventListener("click", () => {
+        const val = input.value.trim();
+        if (required && !val) {
+          input.focus();
+          return;
+        }
+        closeModal();
+        resolve(val);
+      });
+    });
+  }
+
   function statusChip(status) {
-    const s = (status || "").toLowerCase().replace(/\s+/g, "-");
-    return `<span class="status status-${s}">${status}</span>`;
+    const raw = status || "";
+    const s = String(raw)
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    return `<span class="status status-${esc(s)}">${esc(raw)}</span>`;
   }
 
   function initialsAvatar(initials, cls = "") {
-    return `<div class="avatar ${cls}">${initials || "?"}</div>`;
+    return `<div class="avatar ${esc(cls)}">${esc(initials || "?")}</div>`;
   }
 
   function emptyState({ title, text, actionLabel, actionAttr }) {
     return `
       <div class="empty">
-        <h3>${title}</h3>
-        <p>${text}</p>
-        ${actionLabel ? `<button class="btn btn-primary" ${actionAttr || ""}>${actionLabel}</button>` : ""}
+        <h3>${esc(title)}</h3>
+        <p>${esc(text)}</p>
+        ${actionLabel ? `<button class="btn btn-primary" ${actionAttr || ""}>${esc(actionLabel)}</button>` : ""}
       </div>
     `;
   }
@@ -104,12 +211,42 @@
     return `
       <div class="page-header">
         <div>
-          <h1>${title}</h1>
-          ${subtitle ? `<p>${subtitle}</p>` : ""}
+          <h1>${esc(title)}</h1>
+          ${subtitle ? `<p>${esc(subtitle)}</p>` : ""}
         </div>
         <div class="toolbar-right">${actionsHtml}</div>
       </div>
     `;
+  }
+
+  function bindRowNav(root, selector = "tr[data-id]") {
+    root.querySelectorAll(selector).forEach((row) => {
+      row.setAttribute("tabindex", "0");
+      row.setAttribute("role", "link");
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          row.click();
+        }
+      });
+    });
+  }
+
+  function moneyLine(inv) {
+    const list = inv.listPrice != null ? inv.listPrice : inv.amount;
+    const conc = inv.concessionAmount || 0;
+    if (conc > 0) {
+      return `<span class="money"><s class="muted-sm">${esc(Store.formatPKR(list))}</s> ${esc(Store.formatPKR(inv.amount))}</span>
+        <div class="muted-sm">Concession ${esc(Store.formatPKR(conc))}</div>`;
+    }
+    return `<span class="money">${esc(Store.formatPKR(inv.amount))}</span>`;
+  }
+
+  function concessionBadge(memberId) {
+    const c = Store.getActiveConcession(memberId);
+    if (!c) return "";
+    const until = c.mode === "lifetime" || !c.endDate ? "Lifetime" : `until ${Store.formatDate(c.endDate)}`;
+    return `<span class="pill accent">Concession ${esc(Store.formatPKR(c.amount))} · ${esc(until)}</span>`;
   }
 
   function destroyCharts(container) {
@@ -121,16 +258,32 @@
     });
   }
 
+  function safeChart(fn) {
+    if (!window.Chart) return null;
+    try {
+      return fn();
+    } catch (e) {
+      console.warn("Chart failed", e);
+      return null;
+    }
+  }
+
   window.UI = {
     icons,
+    esc,
     toast,
     openModal,
     closeModal,
     confirmDialog,
+    promptDialog,
     statusChip,
     initialsAvatar,
     emptyState,
     pageHeader,
+    bindRowNav,
+    moneyLine,
+    concessionBadge,
     destroyCharts,
+    safeChart,
   };
 })();

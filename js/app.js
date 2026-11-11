@@ -15,14 +15,16 @@
     { id: "attendance", label: "Attendance", icon: "attendance" },
     { section: "Business" },
     { id: "trainers", label: "Trainers", icon: "trainers" },
-    { id: "revenue", label: "Revenue", icon: "revenue" },
+    { id: "revenue", label: "Revenue", icon: "revenue", adminOnly: true },
     { id: "expenses", label: "Expenses", icon: "expenses" },
     { id: "inventory", label: "Inventory", icon: "inventory" },
     { section: "System" },
-    { id: "reports", label: "Reports", icon: "reports" },
+    { id: "reports", label: "Reports", icon: "reports", adminOnly: true },
     { id: "audit", label: "Audit log", icon: "audit", adminOnly: true },
     { id: "settings", label: "Settings", icon: "settings", adminOnly: true },
   ];
+
+  const ADMIN_ROUTES = new Set(["packages", "audit", "settings", "revenue", "reports"]);
 
   const routes = window.Pages || {};
 
@@ -47,10 +49,10 @@
     const admin = Store.isAdmin();
 
     const navHtml = NAV.map((item) => {
-      if (item.section) return `<div class="nav-section">${item.section}</div>`;
+      if (item.section) return `<div class="nav-section">${UI.esc(item.section)}</div>`;
       if (item.adminOnly && !admin) return "";
       const active = name === item.id ? "active" : "";
-      return `<a class="nav-item ${active}" href="#/${item.id}">${UI.icons[item.icon] || ""}<span>${item.label}</span></a>`;
+      return `<a class="nav-item ${active}" href="#/${item.id}">${UI.icons[item.icon] || ""}<span>${UI.esc(item.label)}</span></a>`;
     }).join("");
 
     document.getElementById("sidebar").innerHTML = `
@@ -64,57 +66,77 @@
       <nav class="nav-list">${navHtml}</nav>
       <div class="sidebar-footer">
         <div class="role-switch">
-          <button type="button" class="${admin ? "active" : ""}" data-role="admin">Admin</button>
-          <button type="button" class="${!admin ? "active" : ""}" data-role="staff">Staff</button>
+          ${
+            Store.isSegregated()
+              ? `<button type="button" class="${admin ? "active" : ""}" data-desk="admin">Admin</button>
+                 <button type="button" class="${!admin && user.staffGender === "male" ? "active" : ""}" data-desk="male">Male</button>
+                 <button type="button" class="${!admin && user.staffGender === "female" ? "active" : ""}" data-desk="female">Female</button>`
+              : `<button type="button" class="${admin ? "active" : ""}" data-desk="admin">Admin</button>
+                 <button type="button" class="${!admin ? "active" : ""}" data-desk="staff">Staff</button>`
+          }
         </div>
         <div class="user-chip">
           ${UI.initialsAvatar(user.name.split(" ").map((w) => w[0]).join("").slice(0, 2))}
           <div class="info">
-            <strong>${user.name}</strong>
-            <span>${user.title}</span>
+            <strong>${UI.esc(user.name)}</strong>
+            <span>${UI.esc(user.title)}${Store.isSegregated() && user.staffGender ? " · " + user.staffGender : ""}</span>
           </div>
         </div>
         <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" id="logout-btn">Sign out</button>
       </div>
     `;
 
-    document.querySelectorAll("[data-role]").forEach((btn) => {
+    document.querySelectorAll("[data-desk]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        Store.switchRole(btn.dataset.role);
-        UI.toast(`Switched to ${btn.dataset.role}`, "success");
-        renderShell();
-        renderPage();
+        try {
+          Store.loginAsDesk(btn.dataset.desk, { roleSwitch: true });
+          UI.toast(`Switched to ${btn.dataset.desk}`, "success");
+          renderShell();
+          renderPage();
+        } catch (e) {
+          UI.toast(e.message, "error");
+        }
       });
     });
 
     document.getElementById("logout-btn")?.addEventListener("click", () => {
-      Store.clearSession();
+      Store.logout();
       location.href = "index.html";
     });
   }
 
   function notifCount() {
-    return (
-      Store.expiringMemberships(7).length +
-      Store.openInvoices().length +
-      Store.lowStock().length +
-      Store.inactiveMembers().length
-    );
+    const visibleIds = new Set(Store.visibleMembers().map((m) => m.id));
+    const expiring = Store.expiringMemberships(7).filter((ms) => visibleIds.has(ms.memberId));
+    const dues = Store.visibleOpenInvoices();
+    const inactive = Store.inactiveMembers().filter((m) => visibleIds.has(m.id));
+    return expiring.length + dues.length + Store.lowStock().length + inactive.length;
+  }
+
+  function roleBadgeLabel() {
+    const u = Store.currentUser();
+    if (Store.isAdmin()) return "Admin";
+    if (Store.isSegregated() && u?.staffGender === "male") return "Male";
+    if (Store.isSegregated() && u?.staffGender === "female") return "Female";
+    return "Staff";
   }
 
   function renderTopbar() {
+    const roleLabel = roleBadgeLabel();
+    const short =
+      roleLabel === "Admin" ? "A" : roleLabel === "Male" ? "M" : roleLabel === "Female" ? "F" : "S";
     document.getElementById("topbar").innerHTML = `
-      <button class="btn-icon mobile-menu-btn" id="menu-btn">${UI.icons.menu}</button>
+      <button class="btn-icon mobile-menu-btn" id="menu-btn" aria-label="Open menu">${UI.icons.menu}</button>
       <div class="search-box">
         ${UI.icons.search}
-        <input type="search" id="global-search" placeholder="Search members, trainers, invoices..." />
+        <input type="search" id="global-search" placeholder="Search members, trainers, invoices..." aria-label="Global search" />
       </div>
       <div class="topbar-actions">
-        <button class="btn-icon notif-btn" id="notif-btn" title="Alerts">
+        <button class="btn-icon notif-btn" id="notif-btn" aria-label="Alerts" title="Alerts">
           ${UI.icons.bell}
           <span class="badge">${notifCount()}</span>
         </button>
-        <span class="status ${Store.isAdmin() ? "status-active" : "status-new"}">${Store.isAdmin() ? "Admin" : "Staff"}</span>
+        <span class="status ${Store.isAdmin() ? "status-active" : "status-new"} role-badge" data-short="${short}"><span class="role-badge-text">${roleLabel}</span></span>
       </div>
     `;
 
@@ -156,15 +178,13 @@
     void root.offsetWidth;
     root.classList.add("fade-in");
 
-    if (route.name === "packages" || route.name === "audit" || route.name === "settings") {
-      if (!Store.isAdmin()) {
-        root.innerHTML = UI.emptyState({
-          title: "Admin only",
-          text: "Switch to Admin in the sidebar to access this area.",
-        });
-        renderSidebar();
-        return;
-      }
+    if (ADMIN_ROUTES.has(route.name) && !Store.isAdmin()) {
+      root.innerHTML = UI.emptyState({
+        title: "Admin only",
+        text: "Switch to Admin in the sidebar to access this area.",
+      });
+      renderSidebar();
+      return;
     }
 
     if (!page) {

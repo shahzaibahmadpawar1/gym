@@ -61,7 +61,7 @@ Pages.revenue = {
                       ? rows
                           .map(
                             (r) =>
-                              `<tr><td>${Store.formatDateTime(r.at)}</td><td>${r.label}</td><td>${r.source}</td><td class="money">${Store.formatPKR(r.amount)}</td></tr>`
+                              `<tr><td>${Store.formatDateTime(r.at)}</td><td>${UI.esc(r.label)}</td><td>${UI.esc(r.source)}</td><td class="money">${Store.formatPKR(r.amount)}</td></tr>`
                           )
                           .join("")
                       : `<tr><td colspan="4" class="muted-sm">No revenue in this period</td></tr>`
@@ -80,27 +80,44 @@ Pages.revenue = {
         });
       });
 
-      const ctx = document.getElementById("rev-donut");
-      if (ctx && window.Chart) {
+      UI.safeChart(() => {
+        const ctx = document.getElementById("rev-donut");
+        if (!ctx) return;
+        const pieData = [rev.membership, rev.ptGym, rev.commission, rev.scrap];
+        const pieTotal = pieData.reduce((s, n) => s + n, 0) || 1;
+        const pieLabels = ["Memberships", "PT (gym)", "Commissions", "Scrap"].map(
+          (label, i) => `${label} ${Math.round((pieData[i] / pieTotal) * 100)}%`
+        );
         new Chart(ctx, {
           type: "doughnut",
           data: {
-            labels: ["Memberships", "PT (gym)", "Commissions", "Scrap"],
+            labels: pieLabels,
             datasets: [
               {
-                data: [rev.membership, rev.ptGym, rev.commission, rev.scrap],
-                backgroundColor: ["#ff6b35", "#1a1d23", "#ffb088", "#9aa3b5"],
+                data: pieData,
+                backgroundColor: ["#ff6b35", "#1a1d23", "#ffb088", "#7a8499"],
                 borderWidth: 0,
               },
             ],
           },
           options: {
-            plugins: { legend: { position: "bottom", labels: { boxWidth: 10 } } },
+            plugins: {
+              legend: { position: "bottom", labels: { boxWidth: 10 } },
+              tooltip: {
+                callbacks: {
+                  label(ctx) {
+                    const v = ctx.raw || 0;
+                    const pct = Math.round((v / pieTotal) * 100);
+                    return ` ${Store.formatPKR(v)} (${pct}%)`;
+                  },
+                },
+              },
+            },
             cutout: "65%",
             maintainAspectRatio: false,
           },
         });
-      }
+      });
     };
 
     paint();

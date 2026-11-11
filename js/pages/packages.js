@@ -27,7 +27,7 @@ Pages.packages = {
                 .map(
                   (p) => `
                 <tr>
-                  <td><strong>${p.name}</strong><div class="muted-sm">${p.description || ""}</div></td>
+                  <td><strong>${UI.esc(p.name)}</strong><div class="muted-sm">${UI.esc(p.description || "")}</div></td>
                   <td>${p.durationDays} days</td>
                   <td class="money">${Store.formatPKR(p.price)}</td>
                   <td>${UI.statusChip(p.active ? "active" : "inactive")}</td>

@@ -421,3 +421,60 @@
 @media (max-width: 960px) {
   .mobile-menu-btn { display: inline-flex; }
 }
+
+/* Mobile: no page horizontal scroll; topbar role badge */
+.app-shell,
+.main-area,
+.content,
+.page-header,
+.topbar {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.page-header {
+  flex-wrap: wrap;
+}
+
+.toolbar-right,
+.quick-actions,
+.modal-footer,
+.row-actions,
+.audit-filters {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .topbar .search-box {
+    max-width: none;
+    min-width: 0;
+  }
+  .topbar .search-box input {
+    min-width: 0;
+    width: 100%;
+  }
+  .role-badge .role-badge-text { display: none; }
+  .role-badge::before {
+    content: attr(data-short);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .role-badge {
+    min-width: 28px;
+    justify-content: center;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .detail-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 390px) {
+  .topbar {
+    gap: var(--space-2);
+    padding: 0 var(--space-3);
+  }
+  .content { padding: var(--space-3); }
+}

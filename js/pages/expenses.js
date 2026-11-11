@@ -13,38 +13,46 @@ Pages.expenses = {
   ],
 
   render(root) {
-    const expenses = Store.state.expenses;
+    const admin = Store.isAdmin();
+    const expenses = admin ? Store.state.expenses : Store.visibleExpenses();
     const month = Store.periodRange("month");
     const monthTotal = Store.expensesInRange(month.from, month.to).reduce((s, e) => s + e.amount, 0);
-    const admin = Store.isAdmin();
 
     root.innerHTML = `
       ${UI.pageHeader({
         title: "Expenses",
-        subtitle: "Categorized spend history · PKR",
+        subtitle: admin ? "All categorized spend · PKR" : "Your expense entries only · no totals",
         actionsHtml: `<button class="btn btn-primary" id="add-exp">${UI.icons.plus} Add expense</button>`,
       })}
-      <div class="grid-kpi" style="grid-template-columns:repeat(2,1fr)">
+      ${
+        admin
+          ? `<div class="grid-kpi" style="grid-template-columns:repeat(2,1fr)">
         <div class="card"><div class="kpi-label">This month</div><div class="kpi-value" style="font-size:1.5rem">${Store.formatPKR(monthTotal)}</div></div>
-        <div class="card"><div class="kpi-label">All recorded</div><div class="kpi-value" style="font-size:1.5rem">${Store.formatPKR(expenses.reduce((s,e)=>s+e.amount,0))}</div></div>
-      </div>
+        <div class="card"><div class="kpi-label">All recorded</div><div class="kpi-value" style="font-size:1.5rem">${Store.formatPKR(Store.state.expenses.reduce((s, e) => s + e.amount, 0))}</div></div>
+      </div>`
+          : ""
+      }
       <div class="card">
         <div class="table-wrap">
           <table class="data-table">
             <thead><tr><th>Date</th><th>Category</th><th>Note</th><th>Method</th><th>Amount</th>${admin ? "<th></th>" : ""}</tr></thead>
             <tbody>
-              ${expenses
-                .map(
-                  (e) => `<tr>
+              ${
+                expenses.length
+                  ? expenses
+                      .map(
+                        (e) => `<tr>
                     <td>${Store.formatDate(e.date)}</td>
-                    <td><span class="pill">${e.category.replace("_", " ")}</span></td>
-                    <td>${e.note || "—"}</td>
-                    <td>${e.method}</td>
+                    <td><span class="pill">${UI.esc(e.category.replace("_", " "))}</span></td>
+                    <td>${UI.esc(e.note || "—")}</td>
+                    <td>${UI.esc(e.method)}</td>
                     <td class="money">${Store.formatPKR(e.amount)}</td>
-                    ${admin ? `<td><button class="btn btn-danger btn-sm" data-del="${e.id}">Delete</button></td>` : ""}
+                    ${admin ? `<td><button class="btn btn-danger btn-sm" data-del="${UI.esc(e.id)}">Delete</button></td>` : ""}
                   </tr>`
-                )
-                .join("")}
+                      )
+                      .join("")
+                  : `<tr><td colspan="${admin ? 6 : 5}" class="muted-sm">No expenses yet</td></tr>`
+              }
             </tbody>
           </table>
         </div>
@@ -73,18 +81,24 @@ Pages.expenses = {
   },
 
   form() {
+    const admin = Store.isAdmin();
+    const today = Store.todayLocal();
     UI.openModal(`
-      <div class="modal-header"><h2>Add expense</h2><button class="btn-icon" data-close>${UI.icons.close}</button></div>
+      <div class="modal-header"><h2>Add expense</h2><button class="btn-icon" data-close aria-label="Close">${UI.icons.close}</button></div>
       <form id="exp-form" class="form-grid">
-        <div class="field"><label>Category</label>
-          <select name="category">${this.categories.map((c) => `<option value="${c}">${c.replace("_", " ")}</option>`).join("")}</select>
+        <div class="field"><label for="exp-cat">Category</label>
+          <select id="exp-cat" name="category">${this.categories.map((c) => `<option value="${c}">${c.replace("_", " ")}</option>`).join("")}</select>
         </div>
-        <div class="field"><label>Amount (PKR)</label><input type="number" name="amount" min="1" required /></div>
-        <div class="field"><label>Date</label><input type="date" name="date" value="${Store.todayISO()}" /></div>
-        <div class="field"><label>Method</label>
-          <select name="method"><option>cash</option><option>card</option><option>bank</option><option>jazzcash</option><option>easypaisa</option></select>
+        <div class="field"><label for="exp-amt">Amount (PKR)</label><input id="exp-amt" type="number" name="amount" min="1" required /></div>
+        ${
+          admin
+            ? `<div class="field"><label for="exp-date">Date</label><input id="exp-date" type="date" name="date" value="${today}" /></div>`
+            : `<div class="field"><label>Date</label><input type="date" value="${today}" disabled /><input type="hidden" name="date" value="${today}" /><p class="muted-sm">Staff entries are dated today</p></div>`
+        }
+        <div class="field"><label for="exp-method">Method</label>
+          <select id="exp-method" name="method"><option>cash</option><option>card</option><option>bank</option><option>jazzcash</option><option>easypaisa</option></select>
         </div>
-        <div class="field full"><label>Note</label><input name="note" /></div>
+        <div class="field full"><label for="exp-note">Note</label><input id="exp-note" name="note" /></div>
       </form>
       <div class="modal-footer">
         <button class="btn btn-ghost" data-close>Cancel</button>
@@ -95,11 +109,14 @@ Pages.expenses = {
     document.getElementById("save-exp").addEventListener("click", () => {
       const form = document.getElementById("exp-form");
       if (!form.reportValidity()) return;
-      const fd = new FormData(form);
-      Store.addExpense(Object.fromEntries(fd.entries()));
-      UI.closeModal();
-      UI.toast("Expense added", "success");
-      App.renderPage();
+      try {
+        Store.addExpense(Object.fromEntries(new FormData(form).entries()));
+        UI.closeModal();
+        UI.toast("Expense added", "success");
+        App.renderPage();
+      } catch (e) {
+        UI.toast(e.message, "error");
+      }
     });
   },
 };

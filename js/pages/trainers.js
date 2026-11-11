@@ -105,7 +105,7 @@ Pages.trainers = {
                       <td class="money">${Store.formatPKR(c.ptFee)}</td>
                       <td class="money">${Store.formatPKR(c.amount)} (${c.percent}%)</td>
                       <td>${UI.statusChip(c.status === "received" ? "paid" : "pending")}</td>
-                      <td>${c.status === "pending" ? `<button class="btn btn-primary btn-sm" data-recv="${c.id}">Mark received</button>` : Store.formatDateTime(c.receivedAt)}</td>
+                      <td>${c.status === "pending" && Store.isAdmin() ? `<button class="btn btn-primary btn-sm" data-recv="${c.id}">Mark received</button>` : c.status === "pending" ? "Pending" : Store.formatDateTime(c.receivedAt)}</td>
                     </tr>`;
                   })
                   .join("") || `<tr><td colspan="5" class="muted-sm">No commission rows</td></tr>`}
@@ -119,9 +119,13 @@ Pages.trainers = {
     document.getElementById("edit-trainer")?.addEventListener("click", () => this.form(t));
     root.querySelectorAll("[data-recv]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        Store.receiveCommission(btn.dataset.recv);
-        UI.toast("Commission recorded as gym revenue", "success");
-        App.renderPage();
+        try {
+          Store.receiveCommission(btn.dataset.recv);
+          UI.toast("Commission recorded as gym revenue", "success");
+          App.renderPage();
+        } catch (e) {
+          UI.toast(e.message, "error");
+        }
       });
     });
   },
