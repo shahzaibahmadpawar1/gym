@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ubaid's Gym — Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/shell.css" />
+</head>
+<body>
+  <main class="login-page">
+    <div class="login-card fade-in">
+      <div class="login-brand">
+        <div class="logo-mark">UG</div>
+        <div>
+          <h1>Ubaid's Gym</h1>
+          <p>Management console</p>
+        </div>
+      </div>
+
+      <h2 style="font-size:1.35rem;margin-bottom:6px">Welcome back</h2>
+      <p class="muted-sm">Choose a role to explore the demo. No password needed for this frontend prototype.</p>
+
+      <div class="role-cards" id="role-cards">
+        <button type="button" class="role-card selected" data-role="admin">
+          <div class="role-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div>
+            <strong>Admin</strong>
+            <span>Owner — full access to fees, packages, commissions &amp; audit</span>
+          </div>
+        </button>
+        <button type="button" class="role-card" data-role="staff">
+          <div class="role-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div>
+            <strong>Staff</strong>
+            <span>Front desk — members, fee collection &amp; attendance</span>
+          </div>
+        </button>
+      </div>
+
+      <button class="btn btn-primary" id="enter-btn">Enter dashboard</button>
+    </div>
+  </main>
+
+  <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script>
+    let selected = "admin";
+    document.querySelectorAll(".role-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        document.querySelectorAll(".role-card").forEach((c) => c.classList.remove("selected"));
+        card.classList.add("selected");
+        selected = card.dataset.role;
+      });
+    });
+    document.getElementById("enter-btn").addEventListener("click", () => {
+      Store.switchRole(selected);
+      location.href = "app.html#/dashboard";
+    });
+    if (Store.getSession()) {
+      location.href = "app.html#/dashboard";
+    }
+  </script>
+</body>
+</html>

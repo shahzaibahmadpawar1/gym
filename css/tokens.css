@@ -1,0 +1,77 @@
+:root {
+  /* Brand — Ubaid's Gym (orange / coral) */
+  --color-accent: #ff6b35;
+  --color-accent-hover: #e85a28;
+  --color-accent-soft: #fff0ea;
+  --color-accent-muted: #ffd4c2;
+
+  --color-charcoal: #1a1d23;
+  --color-charcoal-soft: #2a2f38;
+
+  --color-bg: #f3f4f7;
+  --color-surface: #ffffff;
+  --color-surface-2: #f8f9fb;
+  --color-border: #e6e8ee;
+  --color-border-strong: #d0d4de;
+
+  --color-text: #15171c;
+  --color-text-secondary: #5c6578;
+  --color-text-muted: #8b93a7;
+  --color-text-on-accent: #ffffff;
+  --color-text-on-dark: #ffffff;
+
+  --color-success: #16a34a;
+  --color-success-soft: #e8f8ee;
+  --color-warning: #d97706;
+  --color-warning-soft: #fff6e5;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fdecec;
+  --color-info: #2563eb;
+  --color-info-soft: #e8effe;
+
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-kpi: 2rem;
+
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px rgba(21, 23, 28, 0.04);
+  --shadow-md: 0 4px 16px rgba(21, 23, 28, 0.06);
+  --shadow-lg: 0 12px 32px rgba(21, 23, 28, 0.1);
+  --shadow-hover: 0 8px 24px rgba(255, 107, 53, 0.12);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  --sidebar-width: 260px;
+  --topbar-height: 72px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration: 200ms;
+}
